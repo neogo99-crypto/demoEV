@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Charging Path Bestie - Battery Status Edition</title>
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Kanit', sans-serif;
+        overflow: hidden;
+        background: #f0f2f5;
+      }
+
+      #header {
+        background: #1a1a2e;
+        color: white;
+        padding: 0 20px;
+        height: 65px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        position: relative;
+        z-index: 2000;
+      }
+
+      #map-container {
+        perspective: 1200px;
+        width: 100%;
+        height: calc(100vh - 65px);
+        background: #e5e7eb;
+        overflow: hidden;
+      }
+      #map {
+        height: 100%;
+        width: 100%;
+        transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-origin: bottom;
+      }
+      .map-3d {
+        transform: rotateX(30deg) scale(1.15) translateY(-5%);
+      }
+
+      .controls {
+        position: absolute;
+        top: 80px;
+        right: 20px;
+        z-index: 1500;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-end;
+      }
+      .btn {
+        padding: 12px 25px;
+        border-radius: 30px;
+        border: none;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        transition: 0.3s;
+        font-family: 'Kanit';
+        font-size: 14px;
+      }
+      .btn-3d {
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      }
+      .btn-dest {
+        background: #ef4444;
+      }
+      .btn-list {
+        background: #3b82f6;
+        display: none;
+      }
+      .btn-clear {
+        background: #6b7280;
+        display: none;
+      }
+
+      /* Popup & Battery Bar */
+      .ev-popup {
+        min-width: 250px;
+        color: #1f2937;
+        padding: 5px;
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        margin-bottom: 8px;
+        color: white;
+        font-weight: 600;
+      }
+      .bg-red {
+        background: #dc2626;
+      }
+      .bg-green {
+        background: #16a34a;
+      }
+      .bg-blue {
+        background: #2563eb;
+      }
+      .info-box {
+        background: #f9fafb;
+        padding: 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        border: 1px solid #e5e7eb;
+        line-height: 1.6;
+      }
+
+      /* สไตล์แถบชาร์จแบตเตอรี่ */
+      .battery-container {
+        margin-top: 10px;
+        padding: 8px;
+        background: #fff;
+        border-radius: 8px;
+        border: 1px solid #eee;
+      }
+      .battery-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        margin-bottom: 5px;
+        color: #4b5563;
+      }
+      .battery-bar-bg {
+        background: #e5e7eb;
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .battery-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #3b82f6, #10b981);
+        transition: width 1s ease-in-out;
+      }
+
+      .btn-gmaps {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        background: yellow;
+        color: white;
+        text-decoration: none;
+        padding: 12px;
+        border-radius: 10px;
+        margin-top: 12px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      #overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 2100;
+        display: none;
+        backdrop-filter: blur(3px);
+      }
+      #stationPopup {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 450px;
+        max-height: 75vh;
+        background: white;
+        z-index: 2200;
+        border-radius: 24px;
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .popup-header {
+        background: #1a1a2e;
+        color: white;
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .popup-body {
+        overflow-y: auto;
+        padding: 15px;
+      }
+      .station-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+        background: white;
+        border-radius: 15px;
+        margin-bottom: 10px;
+        transition: 0.2s;
+        border: 1px solid transparent;
+      }
+      .station-item:hover {
+        border-color: #3b82f6;
+        background: #f0f9ff;
+      }
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+      }
+
+      .leaflet-routing-container {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="header">
+      <div>
+        <h2 style="margin: 0; font-size: 18px">⚡ CHARGING STATION FINDER</h2>
+      </div>
+      <div style="font-size: 11px; opacity: 0.9">
+        <span style="color: #16a34a">● ว่าง</span> |
+        <span style="color: #dc2626">● ไม่ว่าง</span> |
+        <span style="color: #2563eb">🔧 อู่ซ่อม</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-3d" onclick="toggle3D()">🕶️ โหมด 3D View</button>
+      <button id="destBtn" class="btn btn-dest" onclick="toggleSelection()">
+        📍 เลือกจุดหมายปลายทาง
+      </button>
+      <button id="listBtn" class="btn btn-list" onclick="showStationList()">
+        📂 List Station Route
+      </button>
+      <button id="clearBtn" class="btn btn-clear" onclick="clearRoute()">
+        🗑 Clear Route
+      </button>
+    </div>
+
+    <div id="overlay" onclick="closeStationList()"></div>
+    <div id="stationPopup">
+      <div class="popup-header">
+        <h3 style="margin: 0; font-size: 16px">สถานีบนเส้นทาง</h3>
+        <span
+          style="cursor: pointer; font-size: 24px"
+          onclick="closeStationList()"
+          >×</span
+        >
+      </div>
+      <div id="stationListContainer" class="popup-body"></div>
+    </div>
+
+    <div id="map-container">
+      <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+    <script>
+      const STATION_URL =
+        'https://docs.google.com/spreadsheets/d/e/2PACX-1vShqdPryhVInqMcbJf5wuxVIomfL2UGWx4cXWQSFpQ2krWoXrixlM6RdKgmaI2W86_s1wUjkWvjAkA6/pub?gid=0&output=csv';
+      const GARAGE_URL =
+        'https://docs.google.com/spreadsheets/d/e/2PACX-1vShqdPryhVInqMcbJf5wuxVIomfL2UGWx4cXWQSFpQ2krWoXrixlM6RdKgmaI2W86_s1wUjkWvjAkA6/pub?gid=824797195&output=csv';
+
+      const START_POS = [13.2835, 100.9248];
+      const map = L.map('map', { zoomControl: false }).setView(START_POS, 14);
+      L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+      ).addTo(map);
+
+      const carIcon = L.icon({
+        iconUrl:
+          'https://e7.pngegg.com/pngimages/90/651/png-clipart-car-bird-s-eye-view-top-view-convertible-transport.png',
+        iconSize: [24, 32],
+        iconAnchor: [24, 24],
+      });
+      const garageIcon = L.icon({
+        iconUrl:
+          'https://static.wixstatic.com/media/7a730a_27ea84a35b3f4633aab95c69b7a8cef3~mv2.png',
+        iconSize: [38, 38],
+        iconAnchor: [19, 38],
+        popupAnchor: [0, -34],
+      });
+
+      L.marker(START_POS, { icon: carIcon, zIndexOffset: 1000 })
+        .addTo(map)
+        .bindPopup('<b>🚗 รถของคุณ</b>');
+
+      let routingControl = null,
+        isSelecting = false,
+        stationsData = [],
+        currentRoutePolyline = null,
+        destMarker = null;
+
+      function toggle3D() {
+        document.getElementById('map').classList.toggle('map-3d');
+        setTimeout(() => map.invalidateSize(), 800);
+      }
+
+      function loadData() {
+        Papa.parse(STATION_URL, {
+          download: true,
+          header: true,
+          complete: (res) => {
+            res.data.forEach((st) => {
+              if (st.Lat && st.Lng) {
+                const isOcc = st.Status == '1';
+                const batteryVal = st.Battery || 0;
+                const m = L.marker([st.Lat, st.Lng], {
+                  icon: L.icon({
+                    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${
+                      isOcc ? 'red' : 'green'
+                    }.png`,
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                  }),
+                }).addTo(map);
+
+                const popupHTML = `
+                            <div class="ev-popup">
+                                <div class="status-badge ${
+                                  isOcc ? 'bg-red' : 'bg-green'
+                                }">${
+                  isOcc ? 'ไม่ว่าง (Occupied)' : 'ว่าง (Available)'
+                }</div>
+                                <h3 style="margin:0 0 8px 0; color:#1a1a2e;">${
+                                  st.Name
+                                }</h3>
+                                <div class="info-box">
+                                    <b>แบรนด์:</b> ${st.Provider}<br>
+                                    <b>กำลังไฟ:</b> ${st.Power || '-'}<br>
+                                    <b>หัวชาร์จ:</b> ${st.Connectors || '-'}
+                                </div>
+                                ${
+                                  isOcc
+                                    ? `
+                                <div class="battery-container">
+                                    <div class="battery-label"><span>ระดับการชาร์จ:</span><b>${batteryVal}%</b></div>
+                                    <div class="battery-bar-bg"><div class="battery-bar-fill" style="width:${batteryVal}%"></div></div>
+                                </div>`
+                                    : ''
+                                }
+                                <a href="https://www.google.com/maps/dir/?api=1&destination=${
+                                  st.Lat
+                                },${
+                  st.Lng
+                }" target="_blank" class="btn-gmaps">📍 นำทางด้วย Google Maps</a>
+                            </div>`;
+                m.bindPopup(popupHTML);
+                st.marker = m;
+                stationsData.push(st);
+              }
+            });
+          },
+        });
+
+        Papa.parse(GARAGE_URL, {
+          download: true,
+          header: true,
+          complete: (res) => {
+            res.data.forEach((gr) => {
+              if (gr.Lat && gr.Lng) {
+                const m = L.marker([gr.Lat, gr.Lng], {
+                  icon: garageIcon,
+                }).addTo(map);
+                m.bindPopup(
+                  `<div class="ev-popup"><div class="status-badge bg-blue">🔧 อู่ซ่อม EV</div><h3 style="margin:0 0 8px 0;">${gr.Name}</h3><div class="info-box"><b>เวลาทำการ:</b> ${gr.WorkTime}<br><b>หมายเหตุ:</b> ${gr.Remark}</div><a href="https://www.google.com/maps/dir/?api=1&destination=${gr.Lat},${gr.Lng}" target="_blank" class="btn-gmaps">📍 นำทางไปอู่ซ่อม</a></div>`
+                );
+              }
+            });
+          },
+        });
+      }
+
+      function toggleSelection() {
+        isSelecting = !isSelecting;
+        document.getElementById('destBtn').innerText = isSelecting
+          ? '🖱 คลิกเลือกบนแผนที่'
+          : '📍 เลือกจุดหมายปลายทาง';
+        map.getContainer().style.cursor = isSelecting ? 'crosshair' : '';
+      }
+
+      map.on('click', (e) => {
+        if (!isSelecting) return;
+        if (routingControl) map.removeControl(routingControl);
+        if (destMarker) map.removeLayer(destMarker);
+        destMarker = L.marker(e.latlng).addTo(map);
+        routingControl = L.Routing.control({
+          waypoints: [L.latLng(START_POS), L.latLng(e.latlng)],
+          createMarker: () => null,
+          lineOptions: {
+            styles: [{ color: '#3b82f6', weight: 7, opacity: 0.8 }],
+          },
+          addWaypoints: false,
+        })
+          .on('routesfound', (ev) => {
+            currentRoutePolyline = L.polyline(ev.routes[0].coordinates);
+            document.getElementById('listBtn').style.display = 'block';
+            document.getElementById('clearBtn').style.display = 'block';
+          })
+          .addTo(map);
+        toggleSelection();
+      });
+
+      function clearRoute() {
+        if (routingControl) map.removeControl(routingControl);
+        if (destMarker) map.removeLayer(destMarker);
+        currentRoutePolyline = null;
+        document.getElementById('listBtn').style.display = 'none';
+        document.getElementById('clearBtn').style.display = 'none';
+      }
+
+      function showStationList() {
+        if (!currentRoutePolyline) return;
+        const container = document.getElementById('stationListContainer');
+        container.innerHTML = '';
+        let filtered = [];
+        stationsData.forEach((st) => {
+          const p = L.latLng(st.Lat, st.Lng);
+          let minD = Infinity;
+          currentRoutePolyline.getLatLngs().forEach((c) => {
+            let d = map.distance(p, c);
+            if (d < minD) minD = d;
+          });
+          const distFromStart = map.distance(L.latLng(START_POS), p) / 1000;
+          if (minD / 1000 <= 4) filtered.push({ ...st, distFromStart });
+        });
+        filtered.sort((a, b) => a.distFromStart - b.distFromStart);
+        filtered.forEach((st) => {
+          const isOcc = st.Status == '1';
+          const item = document.createElement('div');
+          item.className = 'station-item';
+          item.innerHTML = `<div><span class="status-dot" style="background:${
+            isOcc ? '#dc2626' : '#16a34a'
+          }"></span><strong>${st.Provider}</strong><br><small>${
+            st.Name
+          }</small></div><b>${st.distFromStart.toFixed(1)} กม.</b>`;
+          item.onclick = () => {
+            map.flyTo([st.Lat, st.Lng], 16);
+            st.marker.openPopup();
+            closeStationList();
+          };
+          container.appendChild(item);
+        });
+        document.getElementById('stationPopup').style.display = 'flex';
+        document.getElementById('overlay').style.display = 'block';
+      }
+
+      function closeStationList() {
+        document.getElementById('stationPopup').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+      }
+
+      loadData();
+    </script>
+  </body>
+</html>
