@@ -265,7 +265,7 @@
         'https://docs.google.com/spreadsheets/d/e/2PACX-1vShqdPryhVInqMcbJf5wuxVIomfL2UGWx4cXWQSFpQ2krWoXrixlM6RdKgmaI2W86_s1wUjkWvjAkA6/pub?gid=0&output=csv';
 
       let isSelectionMode = false;
-      let map = L.map('map', { zoomControl: false }).setView(CURRENT_POS, 14);
+      let map = L.map('map', { zoomControl: true }).setView(CURRENT_POS, 14);
       let routingControl = null;
 
       L.tileLayer(
