@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Service Dispatcher Pro V2</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      body {
+        font-family: 'Kanit', sans-serif;
+      }
+      #map {
+        height: calc(100vh - 80px);
+        width: 100%;
+        z-index: 1;
+      }
+      .leaflet-routing-container {
+        display: none;
+      } /* ซ่อนแถบคำสั่งตัวอักษรเพื่อความสะอาดตา */
+      .info-card {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        transform: translateY(20px);
+        opacity: 0;
+        pointer-events: none;
+      }
+      .info-card.show {
+        transform: translateY(0);
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .active-mode {
+        background-color: #ef4444 !important;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <header
+      class="h-20 bg-white shadow-md flex items-center justify-between px-6 sticky top-0 z-10"
+    >
+      <div class="flex items-center space-x-3">
+        <div class="bg-indigo-600 p-2 rounded-lg">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6 text-white"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+        </div>
+        <h1 class="text-xl font-bold text-gray-800">
+          EV Power Delivery Service.
+        </h1>
+      </div>
+
+      <button
+        id="dispatchBtn"
+        class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2.5 rounded-full font-semibold shadow-lg flex items-center space-x-2 transition-all"
+      >
+        <span id="btnIcon">📍</span>
+        <span id="btnText">เลือกให้บริการ</span>
+      </button>
+    </header>
+
+    <main class="relative">
+      <div id="map"></div>
+
+      <div
+        id="routeInfoCard"
+        class="info-card absolute top-6 right-6 z-[1000] bg-white/95 backdrop-blur-sm p-5 rounded-2xl shadow-2xl border border-indigo-100 w-72"
+      >
+        <div class="flex items-center justify-between mb-3">
+          <span
+            class="text-xs font-bold text-indigo-500 uppercase tracking-widest"
+            >ข้อมูลการเดินทาง</span
+          >
+          <span class="flex h-2 w-2 rounded-full bg-green-500"></span>
+        </div>
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="text-gray-500 text-sm">ระยะทาง</div>
+            <div class="text-lg font-bold text-gray-800">
+              <span id="distVal">-</span> กม.
+            </div>
+          </div>
+          <div class="flex items-center justify-between">
+            <div class="text-gray-500 text-sm">เวลาโดยประมาณ</div>
+            <div class="text-lg font-bold text-gray-800">
+              <span id="timeVal">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="absolute bottom-6 left-6 z-[1000] bg-white p-4 rounded-xl shadow-xl border border-gray-100 text-sm"
+      >
+        <div class="space-y-2">
+          <div class="flex items-center gap-2">
+            <img
+              src="https://static.wixstatic.com/media/7a730a_c37910d54a354a2699d98d418f9346e4~mv2.png"
+              class="w-5 h-5"
+            />
+            <span>ว่าง (พร้อมบริการ)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <img
+              src="https://static.wixstatic.com/media/7a730a_a1b0450197a3436390ebe5f24f8c87bb~mv2.png"
+              class="w-5 h-5"
+            />
+            <span>ไม่ว่าง</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+    <script>
+      const CURRENT_POS = [13.2835, 100.9248];
+      const SHEET_URL =
+        'https://docs.google.com/spreadsheets/d/e/2PACX-1vShqdPryhVInqMcbJf5wuxVIomfL2UGWx4cXWQSFpQ2krWoXrixlM6RdKgmaI2W86_s1wUjkWvjAkA6/pub?gid=0&output=csv';
+
+      let isSelectionMode = false;
+      let map = L.map('map').setView(CURRENT_POS, 14);
+      let routingControl = null;
+
+      // Tile Layer
+      L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+        {
+          attribution: '&copy; OpenStreetMap',
+        }
+      ).addTo(map);
+
+      // Icons
+      const carIcon = L.icon({
+        iconUrl:
+          'https://e7.pngegg.com/pngimages/90/651/png-clipart-car-bird-s-eye-view-top-view-convertible-transport.png',
+        iconSize: [20, 32],
+        iconAnchor: [22, 22],
+      });
+      const availableIcon = L.icon({
+        iconUrl:
+          'https://static.wixstatic.com/media/7a730a_c37910d54a354a2699d98d418f9346e4~mv2.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+      });
+      const busyIcon = L.icon({
+        iconUrl:
+          'https://static.wixstatic.com/media/7a730a_a1b0450197a3436390ebe5f24f8c87bb~mv2.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+      });
+
+      // Current Location Marker
+      L.marker(CURRENT_POS, { icon: carIcon })
+        .addTo(map)
+        .bindPopup('<b>คุณอยู่ที่นี่</b>');
+
+      // Load Data with Corrected Columns
+      async function loadData() {
+        try {
+          const res = await fetch(SHEET_URL);
+          const csv = await res.text();
+          const lines = csv.split('\n').slice(1);
+
+          lines.forEach((line) => {
+            const columns = line.split(',');
+            if (columns.length > 7) {
+              const lat = parseFloat(columns[2]); // แก้ไขตามที่คุณแจ้ง
+              const lng = parseFloat(columns[3]); // แก้ไขตามที่คุณแจ้ง
+              const status = columns[7].trim(); // แก้ไขตามที่คุณแจ้ง
+
+              const icon = status === '0' ? availableIcon : busyIcon;
+              const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
+
+              marker.on('click', () => {
+                if (!isSelectionMode) {
+                  marker
+                    .bindPopup(`สถานะ: ${status === '0' ? 'ว่าง' : 'ไม่ว่าง'}`)
+                    .openPopup();
+                  return;
+                }
+                if (status === '0') {
+                  drawRoute(lat, lng);
+                } else {
+                  alert('ขออภัย! จุดนี้กำลังให้บริการท่านอื่นอยู่');
+                }
+              });
+            }
+          });
+        } catch (e) {
+          console.error('Data error:', e);
+        }
+      }
+
+      // Routing Logic with Info Display
+      function drawRoute(dLat, dLng) {
+        if (routingControl) map.removeControl(routingControl);
+
+        routingControl = L.Routing.control({
+          waypoints: [L.latLng(CURRENT_POS), L.latLng(dLat, dLng)],
+          lineOptions: {
+            styles: [{ color: '#4f46e5', weight: 6, opacity: 0.7 }],
+          },
+          createMarker: () => null,
+          addWaypoints: false,
+          routeWhileDragging: false,
+        }).addTo(map);
+
+        // Listen for route results
+        routingControl.on('routesfound', function (e) {
+          const routes = e.routes;
+          const summary = routes[0].summary;
+
+          // แปลงหน่วย
+          const distKm = (summary.totalDistance / 1000).toFixed(1);
+          const timeSec = summary.totalTime;
+          let timeStr = '';
+
+          if (timeSec < 3600) {
+            timeStr = Math.round(timeSec / 60) + ' นาที';
+          } else {
+            const h = Math.floor(timeSec / 3600);
+            const m = Math.round((timeSec % 3600) / 60);
+            timeStr = `${h} ชม. ${m} นาที`;
+          }
+
+          // แสดงผลใน UI
+          document.getElementById('distVal').innerText = distKm;
+          document.getElementById('timeVal').innerText = timeStr;
+          document.getElementById('routeInfoCard').classList.add('show');
+        });
+      }
+
+      // Button Toggle
+      const btn = document.getElementById('dispatchBtn');
+      btn.addEventListener('click', () => {
+        isSelectionMode = !isSelectionMode;
+        if (isSelectionMode) {
+          btn.classList.add('active-mode');
+          document.getElementById('btnText').innerText = 'ยกเลิกการเลือก';
+          document.getElementById('btnIcon').innerText = '❌';
+        } else {
+          btn.classList.remove('active-mode');
+          document.getElementById('btnText').innerText = 'เลือกให้บริการ';
+          document.getElementById('btnIcon').innerText = '📍';
+          if (routingControl) map.removeControl(routingControl);
+          document.getElementById('routeInfoCard').classList.remove('show');
+        }
+      });
+
+      loadData();
+    </script>
+  </body>
+</html>
