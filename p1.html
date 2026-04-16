@@ -368,7 +368,7 @@
                                 </div>`
                                     : ''
                                 }
-                                <a href="https://www.google.com/maps/dir/?api=1&destination=${
+                                <a href="https://www.google.com/maps/dir/?api=1&origin=${START_POS[0]},${START_POS[1]}&destination=${
                                   st.Lat
                                 },${
                   st.Lng
@@ -392,7 +392,7 @@
                   icon: garageIcon,
                 }).addTo(map);
                 m.bindPopup(
-                  `<div class="ev-popup"><div class="status-badge bg-blue">🔧 อู่ซ่อม EV</div><h3 style="margin:0 0 8px 0;">${gr.Name}</h3><div class="info-box"><b>เวลาทำการ:</b> ${gr.WorkTime}<br><b>หมายเหตุ:</b> ${gr.Remark}</div><a href="https://www.google.com/maps/dir/?api=1&destination=${gr.Lat},${gr.Lng}" target="_blank" class="btn-gmaps">📍 นำทางไปอู่ซ่อม</a></div>`
+                  `<div class="ev-popup"><div class="status-badge bg-blue">🔧 อู่ซ่อม EV</div><h3 style="margin:0 0 8px 0;">${gr.Name}</h3><div class="info-box"><b>เวลาทำการ:</b> ${gr.WorkTime}<br><b>หมายเหตุ:</b> ${gr.Remark}</div><a href="https://www.google.com/maps/dir/?api=1&origin=${START_POS[0]},${START_POS[1]}&destination=${gr.Lat},${gr.Lng}" target="_blank" class="btn-gmaps">📍 นำทางไปอู่ซ่อม</a></div>`
                 );
               }
             });
