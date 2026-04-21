@@ -135,14 +135,8 @@
         const GARAGE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vShqdPryhVInqMcbJf5wuxVIomfL2UGWx4cXWQSFpQ2krWoXrixlM6RdKgmaI2W86_s1wUjkWvjAkA6/pub?gid=824797195&output=csv';
 
         const START_POS = [13.2835, 100.9248];
-        const map = L.map('map').setView(START_POS, 14);
-        
-        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-    maxZoom: 20,
-    subdomains:['mt0','mt1','mt2','mt3']
-}).addTo(map);
-        
-        //L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+        const map = L.map('map').setView(START_POS, 14);   
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
         const carIcon = L.icon({ iconUrl: 'img/mycar.png', iconSize: [24, 32], iconAnchor: [24, 24] });
         const garageMarkerIcon = L.icon({
