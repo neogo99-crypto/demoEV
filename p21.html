@@ -136,7 +136,11 @@
 
         const START_POS = [13.2835, 100.9248];
         const map = L.map('map').setView(START_POS, 14);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+        
+        // ตัวอย่างของ Esri ที่มีรายละเอียดสถานที่เยอะขึ้น
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
+        
+        //L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
         const carIcon = L.icon({ iconUrl: 'img/mycar.png', iconSize: [24, 32], iconAnchor: [24, 24] });
         const garageMarkerIcon = L.icon({
