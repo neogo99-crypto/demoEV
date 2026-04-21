@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet" />
 
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; font-family: 'Kanit', sans-serif; overflow: hidden; background: #f0f2f5; }
@@ -91,6 +94,15 @@
         <button id="destBtn" class="btn btn-dest" onclick="toggleSelection()">📍 เลือกจุดหมายปลายทาง</button>
         <button id="listBtn" class="btn btn-list" onclick="showStationList()">📂 List Route Info</button>
         <button id="clearBtn" class="btn btn-clear" onclick="clearRoute()">🗑 Clear Route</button>
+
+        <button id="searchBtn" class="btn" style="background: #059669;" onclick="toggleSearch()">
+    🔍 ค้นหาชื่อสถานที่
+</button>
+
+<div id="searchBoxContainer" style="display:none; width: 100%; margin-top: 5px;">
+    <div id="geocoder-input"></div>
+</div>
+        
     </div>
 
     <div id="overlay" onclick="closeStationList()"></div>
@@ -217,6 +229,66 @@
             document.getElementById('clearBtn').style.display = 'none';
         }
 
+// ตัวแปรสำหรับคุมระบบค้นหา
+let geocoderControl = null;
+
+function toggleSearch() {
+    const container = document.getElementById('searchBoxContainer');
+    
+    // ถ้ายังไม่เคยสร้างช่องค้นหา ให้สร้างขึ้นมา
+    if (!geocoderControl) {
+        geocoderControl = L.Control.geocoder({
+            defaultMarkGeocode: false,
+            placeholder: "พิมพ์ชื่อสถานที่...",
+            errorMessage: "ไม่พบสถานที่นี้"
+        })
+        .on('markgeocode', function(e) {
+            const latlng = e.geocode.center;
+            
+            // 1. ล้างเส้นทางเก่า (ถ้ามี)
+            clearRoute();
+            
+            // 2. ปักหมุดที่พบ
+            destMarker = L.marker(latlng).addTo(map);
+            
+            // 3. สร้างเส้นทางใหม่
+            routingControl = L.Routing.control({
+                waypoints: [L.latLng(START_POS), latlng],
+                createMarker: () => null,
+                lineOptions: { styles: [{ color: '#3b82f6', weight: 6, opacity: 0.8 }] },
+                addWaypoints: false
+            }).on('routesfound', (ev) => {
+                currentRoutePolyline = L.polyline(ev.routes[0].coordinates);
+                document.getElementById('listBtn').style.display = 'block';
+                document.getElementById('clearBtn').style.display = 'block';
+            }).addTo(map);
+
+            // 4. เลื่อนแผนที่ไปจุดหมาย
+            map.flyTo(latlng, 15);
+            
+            // 5. ปิดช่องค้นหาหลังเลือกเสร็จ
+            container.style.display = 'none';
+        })
+        .addTo(map);
+        
+        // ย้ายช่อง Input มาไว้ใน Container ที่เราเตรียมไว้ใน HTML
+        const geocoderElement = geocoderControl.getContainer();
+        document.getElementById('geocoder-input').appendChild(geocoderElement);
+    }
+
+    // เปิด-ปิด การแสดงผลกล่องค้นหา
+    if (container.style.display === 'none') {
+        container.style.display = 'block';
+        // โฟกัสไปที่ช่องพิมพ์ทันที
+        setTimeout(() => {
+            document.querySelector('.leaflet-control-geocoder-form input').focus();
+        }, 100);
+    } else {
+        container.style.display = 'none';
+    }
+}
+
+        
         function showStationList() {
             if (!currentRoutePolyline) return;
             const container = document.getElementById('stationListContainer');
