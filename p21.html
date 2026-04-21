@@ -118,10 +118,10 @@
         const map = L.map('map').setView(START_POS, 14);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-        const carIcon = L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/854/854831.png', iconSize: [32, 32], iconAnchor: [16, 16] });
+        const carIcon = L.icon({ iconUrl: 'img/mycar.png', iconSize: [24, 32], iconAnchor: [24, 24] });
         const garageMarkerIcon = L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34]
+            iconUrl: 'img/auev.png',
+            iconSize: [38, 38], iconAnchor: [19, 38], popupAnchor: [1, -34]
         });
 
         L.marker(START_POS, { icon: carIcon }).addTo(map).bindPopup('<b>🚗 รถของคุณ</b>');
