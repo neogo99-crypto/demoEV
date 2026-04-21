@@ -1,296 +1,296 @@
 <!DOCTYPE html>
 <html lang="th">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Service Dispatcher Pro V2</title>
+    <title>EV ONE - Charging & Garage Finder</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet" />
 
     <style>
-      body {
-        font-family: 'Kanit', sans-serif;
-      }
-      #map {
-        height: calc(100vh - 80px);
-        width: 100%;
-        z-index: 1;
-      }
-      .leaflet-routing-container {
-        display: none;
-      } /* ซ่อนแถบคำสั่งตัวอักษรเพื่อความสะอาดตา */
-      .info-card {
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        transform: translateY(20px);
-        opacity: 0;
-        pointer-events: none;
-      }
-      .info-card.show {
-        transform: translateY(0);
-        opacity: 1;
-        pointer-events: auto;
-      }
-      .active-mode {
-        background-color: #ef4444 !important;
-        animation: pulse 2s infinite;
-      }
-      @keyframes pulse {
-        0% {
-          transform: scale(1);
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; font-family: 'Kanit', sans-serif; overflow: hidden; background: #f0f2f5; }
+
+        #header {
+            background: #1a1a2e;
+            color: white;
+            padding: 0 20px;
+            height: 65px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            position: relative;
+            z-index: 2000;
         }
-        50% {
-          transform: scale(1.05);
+
+        #map-container { perspective: 1200px; width: 100%; height: calc(100vh - 65px); background: #e5e7eb; overflow: hidden; }
+        #map { height: 100%; width: 100%; transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1); transform-origin: bottom; }
+        .map-3d { transform: rotateX(30deg) scale(1.15) translateY(-5%); }
+
+        .controls { position: absolute; top: 80px; right: 20px; z-index: 1500; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+        .btn { padding: 12px 25px; border-radius: 30px; border: none; color: white; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: 0.3s; font-family: 'Kanit'; font-size: 14px; }
+        .btn-3d { background: linear-gradient(135deg, #4f46e5, #7c3aed); }
+        .btn-dest { background: #ef4444; }
+        .btn-list, .btn-clear { display: none; }
+        .btn-list { background: #3b82f6; }
+        .btn-clear { background: #6b7280; }
+
+        /* Popup Styles */
+        .ev-popup { min-width: 220px; padding: 5px; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; margin-bottom: 8px; color: white; font-weight: 600; }
+        .bg-red { background: #dc2626; }
+        .bg-green { background: #16a34a; }
+        .bg-blue { background: #2563eb; }
+        .info-box { background: #f9fafb; padding: 12px; border-radius: 12px; font-size: 13px; border: 1px solid #e5e7eb; line-height: 1.6; }
+
+        /* List Modal */
+        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2100; display: none; backdrop-filter: blur(3px); }
+        #stationPopup { 
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            width: 90%; max-width: 450px; max-height: 75vh; background: white; 
+            z-index: 2200; border-radius: 24px; display: none; flex-direction: column; overflow: hidden; 
         }
-        100% {
-          transform: scale(1);
+        .popup-header { background: #1a1a2e; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .popup-body { overflow-y: auto; padding: 15px; background: #f8fafc; }
+        
+        .station-item { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 15px; border-radius: 16px; margin-bottom: 10px; 
+            background: white; border: 1px solid #e2e8f0; cursor: pointer; transition: 0.2s;
         }
-      }
+        .station-item:hover { border-color: #3b82f6; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .type-tag { font-size: 10px; padding: 2px 8px; border-radius: 10px; margin-top: 4px; display: inline-block; }
+        
+        .btn-gmaps { 
+            display: flex; align-items: center; justify-content: center; gap: 8px; 
+            width: 100%; background: #4285F4; color: white; text-decoration: none; 
+            padding: 10px; border-radius: 10px; margin-top: 12px; font-size: 13px; font-weight: 600; 
+        }
+        
+        .leaflet-routing-container { display: none; }
     </style>
-  </head>
-  <body class="bg-gray-50">
-    <header
-      class="h-20 bg-white shadow-md flex items-center justify-between px-6 sticky top-0 z-10"
-    >
-      <div class="flex items-center space-x-3">
-        <div class="bg-indigo-600 p-2 rounded-lg">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6 text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-            />
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-            />
-          </svg>
-        </div>
-        <h1 class="text-xl font-bold text-gray-800">
-          EV Power Delivery Service.
-        </h1>
-      </div>
+</head>
+<body>
 
-      <button
-        id="dispatchBtn"
-        class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2.5 rounded-full font-semibold shadow-lg flex items-center space-x-2 transition-all"
-      >
-        <span id="btnIcon">📍</span>
-        <span id="btnText">เลือกให้บริการ</span>
-      </button>
-    </header>
-
-    <main class="relative">
-      <div id="map"></div>
-
-      <div
-        id="routeInfoCard"
-        class="info-card absolute top-6 right-6 z-[1000] bg-white/95 backdrop-blur-sm p-5 rounded-2xl shadow-2xl border border-indigo-100 w-72"
-      >
-        <div class="flex items-center justify-between mb-3">
-          <span
-            class="text-xs font-bold text-indigo-500 uppercase tracking-widest"
-            >ข้อมูลการเดินทาง</span
-          >
-          <span class="flex h-2 w-2 rounded-full bg-green-500"></span>
+    <div id="header">
+        <a href="index.html" style="text-decoration: none; color: inherit;">
+            <h2 style="margin: 0; font-size: 18px; cursor: pointer;">⚡ EV ONE FINDER</h2>
+        </a>
+        <div style="font-size: 11px; opacity: 0.9">
+            <span style="color: #16a34a">● ว่าง</span> | 
+            <span style="color: #dc2626">● ไม่ว่าง</span> | 
+            <span style="color: #2563eb">🔧 อู่ซ่อม</span>
         </div>
-        <div class="space-y-4">
-          <div class="flex items-center justify-between">
-            <div class="text-gray-500 text-sm">ระยะทาง</div>
-            <div class="text-lg font-bold text-gray-800">
-              <span id="distVal">-</span> กม.
-            </div>
-          </div>
-          <div class="flex items-center justify-between">
-            <div class="text-gray-500 text-sm">เวลาโดยประมาณ</div>
-            <div class="text-lg font-bold text-gray-800">
-              <span id="timeVal">-</span>
-            </div>
-          </div>
-        </div>
-      </div>
+    </div>
 
-      <div
-        class="absolute bottom-6 left-6 z-[1000] bg-white p-4 rounded-xl shadow-xl border border-gray-100 text-sm"
-      >
-        <div class="space-y-2">
-          <div class="flex items-center gap-2">
-            <img
-              src="https://static.wixstatic.com/media/7a730a_abdbeba6a2dc4c1e806ed3c70faef5c1~mv2.png"
-              class="w-5 h-5"
-            />
-            <span>ว่าง (พร้อมบริการ)</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <img
-              src="https://static.wixstatic.com/media/7a730a_c8c10cf91373480796dfa9ea3012eff3~mv2.png"
-              class="w-5 h-5"
-            />
-            <span>ไม่ว่าง</span>
-          </div>
+    <div class="controls">
+        <button class="btn btn-3d" onclick="toggle3D()">🕶️ โหมด 3D View</button>
+        <button id="destBtn" class="btn btn-dest" onclick="toggleSelection()">📍 เลือกจุดหมายปลายทาง</button>
+        <button id="listBtn" class="btn btn-list" onclick="showStationList()">📂 List Route Info</button>
+        <button id="clearBtn" class="btn btn-clear" onclick="clearRoute()">🗑 Clear Route</button>
+    </div>
+
+    <div id="overlay" onclick="closeStationList()"></div>
+    <div id="stationPopup">
+        <div class="popup-header">
+            <h3 style="margin: 0; font-size: 16px">สถานที่บนเส้นทาง (รัศมี 4 กม.)</h3>
+            <span style="cursor: pointer; font-size: 24px" onclick="closeStationList()">×</span>
         </div>
-      </div>
-    </main>
+        <div id="stationListContainer" class="popup-body"></div>
+    </div>
+
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 
     <script>
-      const CURRENT_POS = [13.2835, 100.9248];
-      const SHEET_URL =
-        'https://docs.google.com/spreadsheets/d/e/2PACX-1vShqdPryhVInqMcbJf5wuxVIomfL2UGWx4cXWQSFpQ2krWoXrixlM6RdKgmaI2W86_s1wUjkWvjAkA6/pub?gid=0&output=csv';
+        const STATION_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vShqdPryhVInqMcbJf5wuxVIomfL2UGWx4cXWQSFpQ2krWoXrixlM6RdKgmaI2W86_s1wUjkWvjAkA6/pub?gid=0&output=csv';
+        const GARAGE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vShqdPryhVInqMcbJf5wuxVIomfL2UGWx4cXWQSFpQ2krWoXrixlM6RdKgmaI2W86_s1wUjkWvjAkA6/pub?gid=824797195&output=csv';
 
-      let isSelectionMode = false;
-      let map = L.map('map').setView(CURRENT_POS, 14);
-      let routingControl = null;
+        const START_POS = [13.2835, 100.9248];
+        const map = L.map('map').setView(START_POS, 14);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-      // Tile Layer
-      L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-        {
-          attribution: '&copy; OpenStreetMap',
-        }
-      ).addTo(map);
-
-      // Icons
-      const carIcon = L.icon({
-        iconUrl:
-          'https://e7.pngegg.com/pngimages/90/651/png-clipart-car-bird-s-eye-view-top-view-convertible-transport.png',
-        iconSize: [20, 32],
-        iconAnchor: [22, 22],
-      });
-      const availableIcon = L.icon({
-        iconUrl:
-          'https://static.wixstatic.com/media/7a730a_abdbeba6a2dc4c1e806ed3c70faef5c1~mv2.png',
-        iconSize: [30, 20],
-        iconAnchor: [16, 32],
-      });
-      const busyIcon = L.icon({
-        iconUrl:
-          'https://static.wixstatic.com/media/7a730a_c8c10cf91373480796dfa9ea3012eff3~mv2.png',
-        iconSize: [30, 20],
-        iconAnchor: [16, 32],
-      });
-
-      // Current Location Marker
-      L.marker(CURRENT_POS, { icon: carIcon })
-        .addTo(map)
-        .bindPopup('<b>คุณอยู่ที่นี่</b>');
-
-      // Load Data with Corrected Columns
-      async function loadData() {
-        try {
-          const res = await fetch(SHEET_URL);
-          const csv = await res.text();
-          const lines = csv.split('\n').slice(1);
-
-          lines.forEach((line) => {
-            const columns = line.split(',');
-            if (columns.length > 7) {
-              const lat = parseFloat(columns[2]); // แก้ไขตามที่คุณแจ้ง
-              const lng = parseFloat(columns[3]); // แก้ไขตามที่คุณแจ้ง
-              const status = columns[7].trim(); // แก้ไขตามที่คุณแจ้ง
-
-              const icon = status === '0' ? availableIcon : busyIcon;
-              const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
-
-              marker.on('click', () => {
-                if (!isSelectionMode) {
-                  marker
-                    .bindPopup(`สถานะ: ${status === '0' ? 'ว่าง' : 'ไม่ว่าง'}`)
-                    .openPopup();
-                  return;
-                }
-                if (status === '0') {
-                  drawRoute(lat, lng);
-                } else {
-                  alert('ขออภัย! จุดนี้กำลังให้บริการท่านอื่นอยู่');
-                }
-              });
-            }
-          });
-        } catch (e) {
-          console.error('Data error:', e);
-        }
-      }
-
-      // Routing Logic with Info Display
-      function drawRoute(dLat, dLng) {
-        if (routingControl) map.removeControl(routingControl);
-
-        routingControl = L.Routing.control({
-          waypoints: [L.latLng(CURRENT_POS), L.latLng(dLat, dLng)],
-          lineOptions: {
-            styles: [{ color: '#4f46e5', weight: 6, opacity: 0.7 }],
-          },
-          createMarker: () => null,
-          addWaypoints: false,
-          routeWhileDragging: false,
-        }).addTo(map);
-
-        // Listen for route results
-        routingControl.on('routesfound', function (e) {
-          const routes = e.routes;
-          const summary = routes[0].summary;
-
-          // แปลงหน่วย
-          const distKm = (summary.totalDistance / 1000).toFixed(1);
-          const timeSec = summary.totalTime;
-          let timeStr = '';
-
-          if (timeSec < 3600) {
-            timeStr = Math.round(timeSec / 60) + ' นาที';
-          } else {
-            const h = Math.floor(timeSec / 3600);
-            const m = Math.round((timeSec % 3600) / 60);
-            timeStr = `${h} ชม. ${m} นาที`;
-          }
-
-          // แสดงผลใน UI
-          document.getElementById('distVal').innerText = distKm;
-          document.getElementById('timeVal').innerText = timeStr;
-          document.getElementById('routeInfoCard').classList.add('show');
+        const carIcon = L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/854/854831.png', iconSize: [32, 32], iconAnchor: [16, 16] });
+        const garageMarkerIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34]
         });
-      }
 
-      // Button Toggle
-      const btn = document.getElementById('dispatchBtn');
-      btn.addEventListener('click', () => {
-        isSelectionMode = !isSelectionMode;
-        if (isSelectionMode) {
-          btn.classList.add('active-mode');
-          document.getElementById('btnText').innerText = 'ยกเลิกการเลือก';
-          document.getElementById('btnIcon').innerText = '❌';
-        } else {
-          btn.classList.remove('active-mode');
-          document.getElementById('btnText').innerText = 'เลือกให้บริการ';
-          document.getElementById('btnIcon').innerText = '📍';
-          if (routingControl) map.removeControl(routingControl);
-          document.getElementById('routeInfoCard').classList.remove('show');
+        L.marker(START_POS, { icon: carIcon }).addTo(map).bindPopup('<b>🚗 รถของคุณ</b>');
+
+        let stationsData = [], garagesData = [], routingControl = null, currentRoutePolyline = null, destMarker = null, isSelecting = false;
+
+        function loadData() {
+            // โหลดสถานีชาร์จ
+            Papa.parse(STATION_URL, {
+                download: true, header: true,
+                complete: (res) => {
+                    res.data.forEach(st => {
+                        if(st.Lat && st.Lng) {
+                            const isOcc = st.Status == '1';
+                            const m = L.marker([st.Lat, st.Lng], {
+                                icon: L.icon({
+                                    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${isOcc?'red':'green'}.png`,
+                                    iconSize: [25, 41], iconAnchor: [12, 41]
+                                })
+                            }).addTo(map);
+                            
+                            const popupHTML = `<div class="ev-popup">
+                                <div class="status-badge ${isOcc?'bg-red':'bg-green'}">${isOcc?'ไม่ว่าง':'ว่าง'}</div>
+                                <h3 style="margin:0;">${st.Name}</h3>
+                                <div class="info-box"><b>แบรนด์:</b> ${st.Provider}<br><b>กำลังไฟ:</b> ${st.Power || '-'}</div>
+                                <a href="https://www.google.com/maps/dir/?api=1&origin=${START_POS[0]},${START_POS[1]}&destination=${st.Lat},${st.Lng}" target="_blank" class="btn-gmaps">📍 นำทาง</a>
+                            </div>`;
+                            m.bindPopup(popupHTML);
+                            st.marker = m; st.type = 'station';
+                            stationsData.push(st);
+                        }
+                    });
+                }
+            });
+
+            // โหลดอู่ซ่อม
+            Papa.parse(GARAGE_URL, {
+                download: true, header: true,
+                complete: (res) => {
+                    res.data.forEach(gr => {
+                        if(gr.Lat && gr.Lng) {
+                            const m = L.marker([gr.Lat, gr.Lng], { icon: garageMarkerIcon }).addTo(map);
+                            const popupHTML = `<div class="ev-popup">
+                                <div class="status-badge bg-blue">🔧 อู่ซ่อม EV</div>
+                                <h3 style="margin:0;">${gr.Name}</h3>
+                                <div class="info-box"><b>เวลาทำการ:</b> ${gr.WorkTime}<br><b>หมายเหตุ:</b> ${gr.Remark}</div>
+                                <a href="https://www.google.com/maps/dir/?api=1&origin=${START_POS[0]},${START_POS[1]}&destination=${gr.Lat},${gr.Lng}" target="_blank" class="btn-gmaps">📍 นำทางไปอู่</a>
+                            </div>`;
+                            m.bindPopup(popupHTML);
+                            gr.marker = m; gr.type = 'garage';
+                            garagesData.push(gr);
+                        }
+                    });
+                }
+            });
         }
-      });
 
-      loadData();
+        function toggle3D() { 
+            document.getElementById('map').classList.toggle('map-3d'); 
+            setTimeout(() => map.invalidateSize(), 800);
+        }
+
+        function toggleSelection() {
+            isSelecting = !isSelecting;
+            document.getElementById('destBtn').innerText = isSelecting ? '🖱 คลิกเลือกบนแผนที่' : '📍 เลือกจุดหมายปลายทาง';
+            map.getContainer().style.cursor = isSelecting ? 'crosshair' : '';
+        }
+
+        map.on('click', (e) => {
+            if (!isSelecting) return;
+            if (routingControl) map.removeControl(routingControl);
+            if (destMarker) map.removeLayer(destMarker);
+            
+            destMarker = L.marker(e.latlng).addTo(map);
+            routingControl = L.Routing.control({
+                waypoints: [L.latLng(START_POS), L.latLng(e.latlng)],
+                createMarker: () => null,
+                lineOptions: { styles: [{ color: '#3b82f6', weight: 6, opacity: 0.8 }] },
+                addWaypoints: false
+            }).on('routesfound', (ev) => {
+                currentRoutePolyline = L.polyline(ev.routes[0].coordinates);
+                document.getElementById('listBtn').style.display = 'block';
+                document.getElementById('clearBtn').style.display = 'block';
+            }).addTo(map);
+            toggleSelection();
+        });
+
+        function clearRoute() {
+            if (routingControl) map.removeControl(routingControl);
+            if (destMarker) map.removeLayer(destMarker);
+            currentRoutePolyline = null;
+            document.getElementById('listBtn').style.display = 'none';
+            document.getElementById('clearBtn').style.display = 'none';
+        }
+
+        function showStationList() {
+            if (!currentRoutePolyline) return;
+            const container = document.getElementById('stationListContainer');
+            container.innerHTML = '';
+            
+            let combinedResults = [];
+            const allPlaces = [...stationsData, ...garagesData]; // รวมข้อมูลทั้ง 2 ชุด
+
+            allPlaces.forEach((place) => {
+                const placeLoc = L.latLng(place.Lat, place.Lng);
+                let minDistanceToRoute = Infinity;
+
+                // หาระยะที่ใกล้ที่สุดจากสถานที่ไปยังเส้นทาง
+                currentRoutePolyline.getLatLngs().forEach((routePoint) => {
+                    let d = map.distance(placeLoc, routePoint);
+                    if (d < minDistanceToRoute) minDistanceToRoute = d;
+                });
+
+                // ถ้าอยู่ห่างจากเส้นทางไม่เกิน 4 กม.
+                if (minDistanceToRoute <= 4000) {
+                    const distFromStart = map.distance(L.latLng(START_POS), placeLoc) / 1000;
+                    combinedResults.push({ ...place, distFromStart });
+                }
+            });
+
+            // เรียงลำดับตามระยะทางจากจุดเริ่มต้น
+            combinedResults.sort((a, b) => a.distFromStart - b.distFromStart);
+
+            if (combinedResults.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#64748b;">ไม่พบสถานที่ใกล้เคียงเส้นทาง</p>';
+            }
+
+            combinedResults.forEach((item) => {
+                const el = document.createElement('div');
+                el.className = 'station-item';
+                
+                // แยกการแสดงผลตามประเภท
+                const isGarage = item.type === 'garage';
+                const statusColor = isGarage ? '#2563eb' : (item.Status == '1' ? '#dc2626' : '#16a34a');
+                const typeLabel = isGarage ? 'อู่ซ่อมรถ EV' : 'สถานีชาร์จ';
+                const typeClass = isGarage ? 'bg-blue' : (item.Status == '1' ? 'bg-red' : 'bg-green');
+
+                el.innerHTML = `
+                    <div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="width:10px; height:10px; border-radius:50%; background:${statusColor}"></span>
+                            <strong>${isGarage ? item.Name : item.Provider}</strong>
+                        </div>
+                        <span class="type-tag ${typeClass}" style="color:white;">${typeLabel}</span><br>
+                        <small style="color:#64748b;">${isGarage ? '🔧 บริการซ่อมบำรุง' : item.Name}</small>
+                    </div>
+                    <div style="text-align:right;">
+                        <b style="color:#1e293b;">${item.distFromStart.toFixed(1)} กม.</b>
+                    </div>
+                `;
+
+                el.onclick = () => {
+                    map.flyTo([item.Lat, item.Lng], 16);
+                    item.marker.openPopup();
+                    closeStationList();
+                };
+                container.appendChild(el);
+            });
+
+            document.getElementById('stationPopup').style.display = 'flex';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function closeStationList() {
+            document.getElementById('stationPopup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        loadData();
     </script>
-  </body>
+</body>
 </html>
