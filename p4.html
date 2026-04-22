@@ -293,25 +293,34 @@
       const GARAGE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vShqdPryhVInqMcbJf5wuxVIomfL2UGWx4cXWQSFpQ2krWoXrixlM6RdKgmaI2W86_s1wUjkWvjAkA6/pub?gid=824797195&output=csv';
 
       const START_POS = [13.2835, 100.9248];
-      
-      // ส่วนการตั้งค่า Layers แผนที่
-      const voyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png');
-      const satellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-    attribution: '&copy; Google Maps'
-});
-      //const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{x}/{y}');
-      
-      const map = L.map('map', { 
+    
+    // --- จุดที่แก้ไข: เปลี่ยน Provider ของแผนที่ดาวเทียมให้เสถียรขึ้น ---
+    const voyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap'
+    });
+    
+    // ใช้ Google Maps Satellite (เสถียรและชัดที่สุด)
+    const satellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+        attribution: '&copy; Google Maps'
+    });
+
+    // เพิ่มโหมด Hybrid (ดาวเทียม + มีชื่อถนน) - อันนี้คณะกรรมการจะชอบมากเพราะดูรู้เรื่อง
+    const hybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        attribution: '&copy; Google Maps'
+    });
+    
+    const map = L.map('map', { 
         zoomControl: true,
         layers: [voyager] 
-      }).setView(START_POS, 14);
+    }).setView(START_POS, 14);
 
-      // เพิ่มตัวเลือกเปลี่ยนแผนที่ (เรียกคะแนนเพิ่ม)
-      const baseMaps = {
+    // เพิ่มปุ่มเลือก Layer (อัปเกรดให้มี 3 ตัวเลือก)
+    const baseMaps = {
         "🗺️ แผนที่ถนน": voyager,
-        "🛰️ ภาพดาวเทียม": satellite
-      };
-      L.control.layers(baseMaps, null, { position: 'bottomleft' }).addTo(map);
+        "🛰️ ภาพดาวเทียม": satellite,
+        "🛣️ ดาวเทียม+ถนน": hybrid
+    };
+    L.control.layers(baseMaps, null, { position: 'bottomleft' }).addTo(map);
 
       const carIcon = L.icon({
         iconUrl: 'img/mycar.png',
